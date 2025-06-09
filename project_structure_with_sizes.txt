@@ -1,0 +1,7 @@
+./node_modules/@img/sharp-libvips-darwin-arm64/lib/glib-2.0/include/glibconfig.h (5.9K)
+./node_modules/sharp/src/common.h (10K)
+./node_modules/sharp/src/metadata.h (1.7K)
+./node_modules/sharp/src/operations.h (3.3K)
+./node_modules/sharp/src/pipeline.h (9.3K)
+./node_modules/sharp/src/stats.h (1.2K)
+./node_modules/sharp/src/utilities.h (677B)

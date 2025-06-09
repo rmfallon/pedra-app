@@ -1,0 +1,41 @@
+/* Add these styles to your styles/globals.css file */
+
+/* Custom marker styles */
+.custom-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Selected marker label */
+.mapboxgl-popup.selected-marker-label {
+  z-index: 1001;
+}
+
+.mapboxgl-popup.selected-marker-label .mapboxgl-popup-content {
+  padding: 0;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  background: white;
+}
+
+.mapboxgl-popup.selected-marker-label .mapboxgl-popup-tip {
+  border-top-color: white;
+}
+
+/* Marker animation */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+.custom-marker.selected {
+  animation: pulse 2s infinite;
+}
