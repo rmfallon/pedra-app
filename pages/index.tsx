@@ -28,60 +28,18 @@ const Home = () => {
         <Map />
       </div>
 
-      {/* SearchBar with VERY obvious styling for debugging */}
+      {/* Clean SearchBar overlay */}
       <div
         style={{
           position: "absolute",
           top: "20px",
           left: "20px",
           right: "20px",
-          zIndex: 999999,
+          zIndex: 1000,
           maxWidth: "600px",
-          backgroundColor: "rgba(255, 0, 0, 0.5)", // Red background to see it
-          padding: "15px",
-          borderRadius: "10px",
-          border: "3px solid yellow",
         }}
       >
-        <div
-          style={{
-            backgroundColor: "yellow",
-            color: "black",
-            padding: "10px",
-            marginBottom: "10px",
-            textAlign: "center",
-            fontWeight: "bold",
-            fontSize: "16px",
-            borderRadius: "5px",
-          }}
-        >
-          🔍 DEBUG: SearchBar should appear below this yellow box
-        </div>
-
-        <div
-          style={{
-            backgroundColor: "white",
-            padding: "10px",
-            borderRadius: "5px",
-            border: "2px solid blue",
-          }}
-        >
-          <SearchBar />
-        </div>
-
-        <div
-          style={{
-            backgroundColor: "green",
-            color: "white",
-            padding: "5px",
-            marginTop: "10px",
-            textAlign: "center",
-            fontWeight: "bold",
-            borderRadius: "5px",
-          }}
-        >
-          ✅ If you see this green box, the layout is working
-        </div>
+        <SearchBar />
       </div>
     </div>
   );

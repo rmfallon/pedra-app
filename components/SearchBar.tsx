@@ -3,6 +3,7 @@ import { useMap } from "../context/MapContext";
 import SearchResults from "./SearchResults";
 import { Search, X, MapPin } from "lucide-react";
 import { Location } from "../services/types/location";
+import { googlePlacesService } from "../services/sources/google";
 
 const SearchBar: React.FC = () => {
   const [query, setQuery] = useState("");
@@ -18,9 +19,21 @@ const SearchBar: React.FC = () => {
     setSelectedLocation,
   } = useMap();
 
-  console.log("SearchBar rendering with inline styles");
+  console.log("SearchBar rendering with Google Places API");
 
+  // Get current map center for searches
+  const getCurrentMapCenter = () => {
+    if (map) {
+      const center = map.getCenter();
+      return { lat: center.lat, lng: center.lng };
+    }
+    return { lat: 42.3601, lng: -71.0589 }; // Default to Boston
+  };
+
+  // Real search using Google Places API
   const handleSearch = async (searchQuery: string) => {
+    console.log("Search triggered for:", searchQuery);
+
     if (!searchQuery.trim()) {
       setSearchResults([]);
       setShowResults(false);
@@ -31,41 +44,69 @@ const SearchBar: React.FC = () => {
     setShowResults(true);
 
     try {
-      const mockResults: Location[] = [
-        {
-          id: "mock-1",
-          name: `Thinking Cup (${searchQuery})`,
-          description: "Popular coffee shop",
-          coordinates: { lat: 42.3601, lng: -71.0589 },
-          address: "85 Newbury St, Boston, MA",
-          rating: 4.5,
-          totalRatings: 127,
-          source: "google" as const,
-          sourceId: "mock-1",
-          lastUpdated: new Date(),
-          types: ["cafe"],
-          priceLevel: 2,
-        },
-      ];
+      const center = getCurrentMapCenter();
 
-      setSearchResults(mockResults);
+      // Use your existing Google Places service
+      const results = await googlePlacesService.searchText({
+        query: searchQuery,
+        lat: center.lat,
+        lng: center.lng,
+        radius: 5000, // 5km radius
+      });
+
+      console.log("Google Places results:", results);
+      setSearchResults(results);
     } catch (error) {
       console.error("Search error:", error);
+      setSearchResults([]);
+
+      // Show user-friendly error
+      // You could add a toast notification here
     } finally {
       setLoading(false);
     }
   };
 
+  // Real nearby search using Google Places API
+  const searchNearby = async () => {
+    console.log("Nearby search triggered");
+    setLoading(true);
+    setShowResults(true);
+
+    try {
+      const center = getCurrentMapCenter();
+
+      // Use your existing Google Places nearby search
+      const results = await googlePlacesService.searchNearby({
+        lat: center.lat,
+        lng: center.lng,
+        radius: 2000, // 2km radius for nearby
+      });
+
+      console.log("Nearby places results:", results);
+      setSearchResults(results);
+      setQuery("Places nearby");
+    } catch (error) {
+      console.error("Nearby search error:", error);
+      setSearchResults([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Debounced search
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (query.trim()) {
         handleSearch(query);
       }
     }, 500);
+
     return () => clearTimeout(timeoutId);
   }, [query]);
 
   const clearSearch = () => {
+    console.log("Clearing search");
     setQuery("");
     setSearchResults([]);
     setShowResults(false);
@@ -97,7 +138,12 @@ const SearchBar: React.FC = () => {
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search for places..."
+              onFocus={() => {
+                if (searchResults.length > 0) {
+                  setShowResults(true);
+                }
+              }}
+              placeholder="Search for restaurants, shops, attractions..."
               style={{
                 flex: 1,
                 padding: "12px",
@@ -121,26 +167,29 @@ const SearchBar: React.FC = () => {
               </button>
             )}
           </div>
+
           <button
-            onClick={() => handleSearch("nearby")}
+            onClick={searchNearby}
+            disabled={loading}
             style={{
               padding: "12px 16px",
-              backgroundColor: "#3B82F6",
+              backgroundColor: loading ? "#93C5FD" : "#3B82F6",
               color: "white",
               border: "none",
               borderRadius: "0 8px 8px 0",
-              cursor: "pointer",
+              cursor: loading ? "not-allowed" : "pointer",
               display: "flex",
               alignItems: "center",
               gap: "8px",
             }}
           >
             <MapPin style={{ height: "16px", width: "16px" }} />
-            Nearby
+            {loading ? "Loading..." : "Nearby"}
           </button>
         </div>
       </div>
 
+      {/* Show SearchResults component when we have results or are loading */}
       {showResults && (searchResults.length > 0 || loading) && (
         <SearchResults
           results={searchResults}
