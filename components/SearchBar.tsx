@@ -1,22 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { useMap } from "../context/MapContext";
-import { Search, X, MapPin, Star } from "lucide-react";
+import { Search, X, MapPin } from "lucide-react";
 import { Location } from "../services/types/location";
 import { googlePlacesService } from "../services/sources/google";
 
 const SearchBar: React.FC = () => {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
-  const {
-    map,
-    searchResults,
-    setSearchResults,
-    selectedLocation,
-    setSelectedLocation,
-  } = useMap();
+  const { map, searchResults, setSearchResults, setSelectedLocation } =
+    useMap();
 
-  console.log("SearchBar rendering - final working version");
+  console.log("SearchBar rendering - sidebar optimized");
 
   // Get current map center for searches
   const getCurrentMapCenter = () => {
@@ -50,7 +47,7 @@ const SearchBar: React.FC = () => {
 
       console.log("Google Places results:", results);
       setSearchResults(results);
-      setSelectedLocation(null); // Clear previous selection
+      setSelectedLocation(null);
     } catch (error) {
       console.error("Search error:", error);
       setSearchResults([]);
@@ -59,31 +56,73 @@ const SearchBar: React.FC = () => {
     }
   };
 
+  // Generate search suggestions
+  const generateSuggestions = (input: string) => {
+    if (!input.trim()) return [];
+
+    const commonSearches = [
+      "coffee shops",
+      "restaurants",
+      "gas stations",
+      "pharmacies",
+      "grocery stores",
+      "banks",
+      "hotels",
+      "parks",
+      "museums",
+      "bars",
+      "gyms",
+      "hospitals",
+      "pizza",
+      "sushi",
+      "mexican food",
+      "italian food",
+      "breakfast",
+      "lunch",
+    ];
+
+    return commonSearches
+      .filter((term) => term.toLowerCase().includes(input.toLowerCase()))
+      .slice(0, 6);
+  };
+
+  // Handle input change with suggestions
+  const handleInputChange = (value: string) => {
+    setQuery(value);
+    const newSuggestions = generateSuggestions(value);
+    setSuggestions(newSuggestions);
+    setShowSuggestions(value.length > 1 && newSuggestions.length > 0);
+  };
+
   // Execute search when user stops typing
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (query.trim()) {
         handleSearch(query);
+        setShowSuggestions(false);
       }
     }, 500);
     return () => clearTimeout(timeoutId);
   }, [query]);
 
-  // Handle result click
-  const handleResultClick = (location: Location, index: number) => {
-    console.log(`Clicked result ${index + 1}:`, location.name);
-    setSelectedLocation(location);
-  };
-
   const clearSearch = () => {
     setQuery("");
     setSearchResults([]);
+    setSuggestions([]);
+    setShowSuggestions(false);
     setSelectedLocation(null);
+  };
+
+  const selectSuggestion = (suggestion: string) => {
+    setQuery(suggestion);
+    setShowSuggestions(false);
+    handleSearch(suggestion);
   };
 
   const searchNearby = async () => {
     console.log("Nearby search triggered");
     setLoading(true);
+    setShowSuggestions(false);
 
     try {
       const center = getCurrentMapCenter();
@@ -107,15 +146,16 @@ const SearchBar: React.FC = () => {
 
   return (
     <div style={{ position: "relative", width: "100%" }}>
-      {/* Search Input */}
+      {/* Main Search Input */}
       <div
         style={{
           display: "flex",
           backgroundColor: "white",
           borderRadius: "8px",
-          border: "2px solid #dadce0",
+          border: "1px solid #dadce0",
+          boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
           overflow: "hidden",
-          marginBottom: searchResults.length > 0 ? "10px" : "0",
+          transition: "box-shadow 0.2s ease",
         }}
       >
         <div
@@ -128,8 +168,8 @@ const SearchBar: React.FC = () => {
         >
           <Search
             style={{
-              height: "20px",
-              width: "20px",
+              height: "18px",
+              width: "18px",
               color: "#5f6368",
               marginRight: "12px",
             }}
@@ -137,15 +177,21 @@ const SearchBar: React.FC = () => {
           <input
             type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search for places..."
+            onChange={(e) => handleInputChange(e.target.value)}
+            onFocus={() => {
+              if (suggestions.length > 0) {
+                setShowSuggestions(true);
+              }
+            }}
+            placeholder="Search maps..."
             style={{
               flex: 1,
-              padding: "14px 0",
+              padding: "12px 0",
               border: "none",
               outline: "none",
               fontSize: "16px",
               color: "#3c4043",
+              backgroundColor: "transparent",
             }}
           />
           {query && (
@@ -156,7 +202,10 @@ const SearchBar: React.FC = () => {
                 border: "none",
                 background: "none",
                 cursor: "pointer",
-                marginLeft: "8px",
+                borderRadius: "4px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
               <X style={{ height: "16px", width: "16px", color: "#5f6368" }} />
@@ -168,184 +217,129 @@ const SearchBar: React.FC = () => {
           onClick={searchNearby}
           disabled={loading}
           style={{
-            padding: "12px 16px",
-            backgroundColor: loading ? "#e8f0fe" : "#1a73e8",
+            padding: "8px 12px",
+            backgroundColor: loading ? "#f8f9fa" : "#1a73e8",
             color: loading ? "#5f6368" : "white",
             border: "none",
             cursor: loading ? "not-allowed" : "pointer",
             display: "flex",
             alignItems: "center",
-            gap: "8px",
+            gap: "6px",
             fontSize: "14px",
             fontWeight: "500",
+            transition: "background-color 0.2s ease",
           }}
         >
-          <MapPin style={{ height: "16px", width: "16px" }} />
-          {loading ? "Loading..." : "Nearby"}
+          <MapPin style={{ height: "14px", width: "14px" }} />
+          <span className="hidden sm:inline">{loading ? "..." : "Nearby"}</span>
         </button>
       </div>
 
-      {/* Results List */}
-      {searchResults.length > 0 && (
+      {/* Search Suggestions Dropdown */}
+      {showSuggestions && suggestions.length > 0 && (
         <div
           style={{
+            position: "absolute",
+            top: "100%",
+            left: 0,
+            right: 0,
             backgroundColor: "white",
-            borderRadius: "8px",
             border: "1px solid #dadce0",
-            maxHeight: "400px",
-            overflowY: "auto",
+            borderTop: "none",
+            borderRadius: "0 0 8px 8px",
             boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+            zIndex: 1000,
+            maxHeight: "200px",
+            overflowY: "auto",
+          }}
+        >
+          {suggestions.map((suggestion, index) => (
+            <div
+              key={index}
+              onClick={() => selectSuggestion(suggestion)}
+              style={{
+                padding: "10px 16px",
+                cursor: "pointer",
+                borderBottom:
+                  index < suggestions.length - 1 ? "1px solid #f0f0f0" : "none",
+                display: "flex",
+                alignItems: "center",
+                backgroundColor: "white",
+                transition: "background-color 0.15s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "#f8f9fa";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "white";
+              }}
+            >
+              <Search
+                style={{
+                  height: "14px",
+                  width: "14px",
+                  color: "#5f6368",
+                  marginRight: "12px",
+                }}
+              />
+              <span
+                style={{
+                  color: "#3c4043",
+                  fontSize: "14px",
+                }}
+              >
+                {suggestion}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Loading indicator */}
+      {loading && (
+        <div
+          style={{
+            position: "absolute",
+            top: "100%",
+            left: 0,
+            right: 0,
+            backgroundColor: "white",
+            padding: "12px 16px",
+            border: "1px solid #dadce0",
+            borderTop: "none",
+            borderRadius: "0 0 8px 8px",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            fontSize: "14px",
+            color: "#5f6368",
+            zIndex: 1000,
           }}
         >
           <div
             style={{
-              padding: "12px 16px",
-              borderBottom: "1px solid #e8eaed",
-              fontWeight: "500",
-              color: "#3c4043",
-              fontSize: "16px",
+              width: "16px",
+              height: "16px",
+              border: "2px solid #f3f3f3",
+              borderTop: "2px solid #1a73e8",
+              borderRadius: "50%",
+              animation: "spin 1s linear infinite",
             }}
-          >
-            {searchResults.length} results
-          </div>
-
-          {searchResults.map((location, index) => {
-            const isSelected = selectedLocation?.id === location.id;
-
-            return (
-              <div
-                key={`${location.source}-${location.sourceId}-${index}`}
-                onClick={() => handleResultClick(location, index)}
-                style={{
-                  padding: "12px 16px",
-                  borderBottom:
-                    index < searchResults.length - 1
-                      ? "1px solid #f0f0f0"
-                      : "none",
-                  cursor: "pointer",
-                  backgroundColor: isSelected ? "#e8f0fe" : "white",
-                  borderLeft: isSelected
-                    ? "4px solid #1a73e8"
-                    : "4px solid transparent",
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: "12px",
-                  transition: "all 0.15s ease",
-                }}
-                onMouseEnter={(e) => {
-                  if (!isSelected) {
-                    e.currentTarget.style.backgroundColor = "#f8f9fa";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isSelected) {
-                    e.currentTarget.style.backgroundColor = "white";
-                  }
-                }}
-              >
-                {/* Number indicator */}
-                <div
-                  style={{
-                    width: "24px",
-                    height: "24px",
-                    backgroundColor: isSelected ? "#1a73e8" : "#5f6368",
-                    color: "white",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "12px",
-                    fontWeight: "500",
-                    flexShrink: 0,
-                    transition: "background-color 0.15s ease",
-                  }}
-                >
-                  {index + 1}
-                </div>
-
-                {/* Content */}
-                <div style={{ flex: 1 }}>
-                  <div
-                    style={{
-                      fontWeight: "500",
-                      color: "#1a73e8",
-                      marginBottom: "4px",
-                      fontSize: "16px",
-                      lineHeight: "1.3",
-                    }}
-                  >
-                    {location.name}
-                  </div>
-
-                  {location.rating && (
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "4px",
-                        marginBottom: "4px",
-                      }}
-                    >
-                      <Star
-                        style={{
-                          width: "14px",
-                          height: "14px",
-                          fill: "#fbbc04",
-                          color: "#fbbc04",
-                        }}
-                      />
-                      <span
-                        style={{
-                          fontSize: "14px",
-                          color: "#3c4043",
-                          fontWeight: "500",
-                        }}
-                      >
-                        {location.rating.toFixed(1)}
-                      </span>
-                      {location.totalRatings && (
-                        <span
-                          style={{
-                            fontSize: "14px",
-                            color: "#5f6368",
-                          }}
-                        >
-                          ({location.totalRatings})
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  {location.address && (
-                    <div
-                      style={{
-                        fontSize: "14px",
-                        color: "#5f6368",
-                        lineHeight: "1.4",
-                      }}
-                    >
-                      {location.address}
-                    </div>
-                  )}
-
-                  {isSelected && (
-                    <div
-                      style={{
-                        marginTop: "8px",
-                        fontSize: "12px",
-                        color: "#1a73e8",
-                        fontWeight: "500",
-                      }}
-                    >
-                      ✓ Selected on map
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+          />
+          Searching...
         </div>
       )}
+
+      <style jsx>{`
+        @keyframes spin {
+          0% {
+            transform: rotate(0deg);
+          }
+          100% {
+            transform: rotate(360deg);
+          }
+        }
+      `}</style>
     </div>
   );
 };
