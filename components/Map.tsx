@@ -1,6 +1,6 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import mapboxgl from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css"; // This line was missing!
+import "mapbox-gl/dist/mapbox-gl.css";
 import { useMap } from "../context/MapContext";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
@@ -13,7 +13,9 @@ const Map: React.FC<MapProps> = ({ showEvents = false }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
-  const { map, setMap, searchResults, selectedLocation } = useMap();
+  const [hasAutoFitted, setHasAutoFitted] = useState(false);
+  const { map, setMap, searchResults, selectedLocation, setSelectedLocation } =
+    useMap();
 
   useEffect(() => {
     if (mapRef.current || !containerRef.current) return;
@@ -56,6 +58,8 @@ const Map: React.FC<MapProps> = ({ showEvents = false }) => {
     return () => {
       console.log("Cleaning up map...");
       if (mapRef.current) {
+        markersRef.current.forEach((marker) => marker.remove());
+        markersRef.current = [];
         mapRef.current.remove();
         mapRef.current = null;
       }
@@ -64,18 +68,18 @@ const Map: React.FC<MapProps> = ({ showEvents = false }) => {
 
   // Handle search results markers
   useEffect(() => {
-    if (!map || !searchResults.length) {
-      // Clear existing markers
-      markersRef.current.forEach((marker) => marker.remove());
-      markersRef.current = [];
-      return;
-    }
-
-    console.log("Adding markers for search results:", searchResults);
+    if (!map) return;
 
     // Clear existing markers
     markersRef.current.forEach((marker) => marker.remove());
     markersRef.current = [];
+
+    if (!searchResults.length) {
+      setHasAutoFitted(false);
+      return;
+    }
+
+    console.log("Adding markers for search results:", searchResults);
 
     // Add new markers for search results
     const newMarkers = searchResults.map((location, index) => {
@@ -85,7 +89,7 @@ const Map: React.FC<MapProps> = ({ showEvents = false }) => {
       markerElement.style.cssText = `
         width: 32px;
         height: 32px;
-        background-color: #3B82F6;
+        background-color: ${selectedLocation?.id === location.id ? "#1a73e8" : "#3B82F6"};
         border: 2px solid white;
         border-radius: 50%;
         cursor: pointer;
@@ -96,6 +100,7 @@ const Map: React.FC<MapProps> = ({ showEvents = false }) => {
         font-size: 12px;
         color: white;
         box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        transition: background-color 0.2s ease;
       `;
       markerElement.textContent = (index + 1).toString();
 
@@ -104,8 +109,12 @@ const Map: React.FC<MapProps> = ({ showEvents = false }) => {
         .addTo(map);
 
       // Add click handler for marker
-      markerElement.addEventListener("click", () => {
-        console.log("Marker clicked:", location);
+      markerElement.addEventListener("click", (e) => {
+        e.stopPropagation();
+        console.log(`Marker ${index + 1} clicked:`, location.name);
+
+        // Set selected location
+        setSelectedLocation(location);
 
         // Create popup with location info
         const popup = new mapboxgl.Popup({ offset: 25 })
@@ -127,27 +136,37 @@ const Map: React.FC<MapProps> = ({ showEvents = false }) => {
 
     markersRef.current = newMarkers;
 
-    // Fit map to show all markers if there are results
-    if (searchResults.length > 0) {
+    // Only auto-fit when new search results arrive (not on selection change)
+    if (!hasAutoFitted && searchResults.length > 0) {
+      console.log("Auto-fitting map to show all results");
       const bounds = new mapboxgl.LngLatBounds();
       searchResults.forEach((location) => {
         bounds.extend([location.coordinates.lng, location.coordinates.lat]);
       });
 
       map.fitBounds(bounds, {
-        padding: { top: 100, bottom: 50, left: 50, right: 50 },
+        padding: { top: 50, bottom: 50, left: 50, right: 50 },
         maxZoom: 15,
+        duration: 1000,
       });
-    }
-  }, [map, searchResults]);
 
-  // Handle selected location
+      setHasAutoFitted(true);
+    }
+  }, [
+    map,
+    searchResults,
+    selectedLocation,
+    hasAutoFitted,
+    setSelectedLocation,
+  ]);
+
+  // Handle selected location - only fly if user explicitly selected something
   useEffect(() => {
     if (!map || !selectedLocation) return;
 
-    console.log("Flying to selected location:", selectedLocation);
+    console.log("Flying to selected location:", selectedLocation.name);
 
-    // Fly to selected location
+    // Fly to selected location with higher zoom
     map.flyTo({
       center: [
         selectedLocation.coordinates.lng,
@@ -158,13 +177,18 @@ const Map: React.FC<MapProps> = ({ showEvents = false }) => {
     });
   }, [map, selectedLocation]);
 
+  // Reset auto-fit when search results change
+  useEffect(() => {
+    setHasAutoFitted(false);
+  }, [searchResults]);
+
   return (
     <div
       ref={containerRef}
       style={{
         width: "100%",
         height: "100%",
-        minHeight: "400px", // Ensure minimum height
+        minHeight: "400px",
       }}
       className="relative"
     />
