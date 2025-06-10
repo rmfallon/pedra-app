@@ -3,7 +3,7 @@ import Map from "../components/Map";
 import SearchBar from "../components/SearchBar";
 
 const Home = () => {
-  console.log("Index page rendering");
+  console.log("Pedra app rendering - simple layout test");
 
   return (
     <div
@@ -14,7 +14,7 @@ const Home = () => {
         fontFamily: "Arial, sans-serif",
       }}
     >
-      {/* Map layer */}
+      {/* Map layer - fills entire screen */}
       <div
         style={{
           position: "absolute",
@@ -28,7 +28,7 @@ const Home = () => {
         <Map />
       </div>
 
-      {/* Clean SearchBar overlay */}
+      {/* SearchBar overlay - clean and professional */}
       <div
         style={{
           position: "absolute",
